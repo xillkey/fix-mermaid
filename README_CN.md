@@ -1,4 +1,6 @@
-# fix-mermaid
+![fix-mermaid.js](docs/images/fmlogo.png)
+
+# fix-mermaid.js
 
 **一个直接修复 LLM 生成的 Mermaid 语法错误的js库。**
 

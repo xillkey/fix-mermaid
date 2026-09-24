@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>fixMermaid 前端调用示例</title>
+<!-- 用 import map 把裸模块名 'mermaid' 指向 CDN；用打包工具（Vite/webpack）时不需要这段 -->
+<script type="importmap">
+{ "imports": { "mermaid": "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs" } }
+</script>
+<style>
+  :root { --ink:#1D2433; --muted:#5B6475; --line:#D9DEE7; --accent:#3346B8; --bg:#F5F7FA; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.6 "PingFang SC","Microsoft YaHei",system-ui,sans-serif; color: var(--ink); background: var(--bg); }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
+  h1 { font-size: 22px; margin: 0 0 16px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+  @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
+  .card { background: #fff; border: 1px solid var(--line); padding: 16px; }
+  textarea { width: 100%; height: 260px; font: 13px/1.5 Menlo, Consolas, monospace; padding: 10px; border: 1px solid var(--line); resize: vertical; }
+  .bar { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; align-items: center; }
+  button { font: inherit; padding: 6px 12px; border: 1px solid var(--line); background: #fff; cursor: pointer; }
+  .panel-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .fixed-src-panel { margin-top: 10px; }
+  .fixed-src-panel[hidden] { display: none; }
+  button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  #log { font-size: 13px; color: var(--muted); margin: 8px 0 0; padding-left: 18px; }
+  .result-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .panel-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 8px; }
+  .panel-head h2 { font-size: 15px; margin: 0; }
+  .before h2 { color: #B42318; } .after h2 { color: #1F7A4D; }
+  .state { font-size: 13px; color: var(--muted); }
+  .mermaid-raw-error { background: #FEF3F2; border: 1px solid #FDA29B; color: #912018; padding: 10px; margin: 0;
+                       font: 12px/1.5 Menlo, Consolas, monospace; white-space: pre-wrap; word-break: break-all; }
+
+  /* 渲染容器与降级样式 —— 集成到项目时带上这部分 */
+  .mermaid-block { min-height: 80px; overflow-x: auto; }
+  .mermaid-block svg { max-width: 100%; height: auto; }
+  .mermaid-placeholder { color: var(--muted); padding: 24px; text-align: center; }
+  .mermaid-fallback-tip { font-size: 13px; color: #9A4A00; margin-bottom: 6px; }
+  .mermaid-fallback-copy { font-size: 12px; padding: 2px 8px; margin-bottom: 6px; }
+  .mermaid-fallback-code { background: #F5F7FA; border: 1px solid var(--line); padding: 10px; font: 12px/1.5 Menlo, Consolas, monospace; overflow-x: auto; margin: 0; }
+</style>
+</head>
+<body>
+<main>
+  <h1>fixMermaid 前端调用示例</h1>
+  <div class="grid">
+    <section class="card">
+      <div class="bar">
+        <button class="primary" id="render">渲染</button>
+        <button id="stream">模拟流式输出</button>
+      </div>
+      <textarea id="src" spellcheck="false" aria-label="Mermaid 源码"></textarea>
+    </section>
+    <div class="result-col">
+      <section class="card before">
+        <div class="panel-head"><h2>修复前</h2><span class="state" id="stateBefore">—</span></div>
+        <div id="before" class="mermaid-block"></div>
+      </section>
+      <section class="card after">
+        <div class="panel-head">
+          <h2>修复后</h2>
+          <div class="panel-actions">
+            <button type="button" id="toggleFixedSrc" class="mermaid-fallback-copy" hidden>展示源码</button>
+            <span class="state" id="state">—</span>
+          </div>
+        </div>
+        <div id="out" class="mermaid-block"></div>
+        <div id="fixedSrcPanel" class="fixed-src-panel" hidden>
+          <button type="button" id="copyFixedSrc" class="mermaid-fallback-copy">复制代码</button>
+          <pre id="fixedSrc" class="mermaid-fallback-code"></pre>
+        </div>
+        <ul id="log"></ul>
+      </section>
+    </div>
+  </div>
+</main>
+
+<script type="module">
+import { setupMermaid, renderMermaidSafe, renderMermaidRaw, createStreamingMermaid, compileMermaid } from '../src/mermaid-render.js';
+
+const $ = (id) => document.getElementById(id);
+let lastFixedCode = '';
+let fixedSrcVisible = false;
+
+function setFixedSource(code) {
+  lastFixedCode = code ?? '';
+  $('fixedSrc').textContent = lastFixedCode;
+  $('toggleFixedSrc').hidden = !lastFixedCode;
+  if (!lastFixedCode) {
+    fixedSrcVisible = false;
+    $('fixedSrcPanel').hidden = true;
+    $('toggleFixedSrc').textContent = '展示源码';
+  }
+}
+
+$('toggleFixedSrc').onclick = () => {
+  fixedSrcVisible = !fixedSrcVisible;
+  $('fixedSrcPanel').hidden = !fixedSrcVisible;
+  $('toggleFixedSrc').textContent = fixedSrcVisible ? '隐藏源码' : '展示源码';
+};
+
+$('copyFixedSrc').onclick = async () => {
+  const btn = $('copyFixedSrc');
+  try {
+    await navigator.clipboard.writeText(lastFixedCode);
+    btn.textContent = '已复制';
+    setTimeout(() => { btn.textContent = '复制代码'; }, 1500);
+  } catch {
+    btn.textContent = '复制失败，请手动选择';
+  }
+};
+const log = (items) => { $('log').innerHTML = ''; for (const t of items) { const li = document.createElement('li'); li.textContent = t; $('log').append(li); } };
+const stateText = { ok: '原文可直接渲染', repaired: '已自动修复', fallback: '修复失败，已降级展示源码', pending: '生成中' };
+
+setupMermaid({
+  theme: 'light',
+  onReport: (r) => console.info('[mermaid 上报]', r),   // 实际项目里发到埋点接口
+});
+
+$('src').value = `flowchart LR
+A【用户】——>B（登录服务）
+B → C[调用接口(v2)]
+C --> end[结束]`;
+
+async function renderBefore(source) {
+  const r = await renderMermaidRaw($('before'), source);
+  $('stateBefore').textContent = r.ok ? '原文可渲染' : '渲染失败';
+  return r;
+}
+
+$('render').onclick = async () => {
+  const source = $('src').value;
+  await renderBefore(source);
+  const r = await renderMermaidSafe($('out'), source);
+  $('state').textContent = stateText[$('out').dataset.mermaidState];
+  setFixedSource(r.code);
+  log(r.fixes.length ? r.fixes : [r.ok ? '无需修复' : `错误：${r.error}`]);
+};
+
+// 模拟 LLM 逐字输出：
+// 修复前 —— 每收到一段就直接渲染，半截代码会反复报错、闪烁；
+// 修复后 —— 生成中保留上一次成功的图，结束时做最终渲染。
+let streamTimer = null;
+$('stream').onclick = () => {
+  clearInterval(streamTimer);
+  const full = $('src').value;
+  const out = $('out');
+  out.replaceChildren(); delete out.dataset.mermaidState;
+  $('before').replaceChildren(); log([]);
+  setFixedSource('');
+  const s = createStreamingMermaid(out, { delay: 250 });
+  let i = 0;
+  let rawBusy = false;
+  streamTimer = setInterval(() => {
+    i = Math.min(full.length, i + 4);
+    const done = i >= full.length;
+    const partial = full.slice(0, i);
+    s.update(partial, { done });
+    if (!rawBusy || done) {                      // 修复前：直接渲染当前片段
+      rawBusy = true;
+      renderBefore(partial).finally(() => { rawBusy = false; });
+    }
+    const progress = done ? '生成结束' : `生成中（${i}/${full.length}）`;
+    $('state').textContent = progress;
+    if (done) {
+      clearInterval(streamTimer);
+      setTimeout(async () => {
+        $('state').textContent = stateText[out.dataset.mermaidState] ?? '生成结束';
+        const r = await compileMermaid(full);
+        setFixedSource(r.code);
+        log(['流式输出结束，已做最终渲染']);
+      }, 300);
+    }
+  }, 60);
+};
+
+$('render').click();
+</script>
+</body>
+</html>

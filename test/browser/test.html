@@ -1,0 +1,86 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+  body { font-family: "Noto Sans CJK SC", sans-serif; margin: 0; padding: 16px; background: #fff; }
+  .panel { width: 640px; min-height: 120px; padding: 16px; margin-bottom: 24px; border: 1px solid #ddd;
+           border-radius: 8px; background: #fff; box-sizing: border-box; }
+  .panel h4 { margin: 0 0 10px; font-size: 14px; }
+  .before h4 { color: #b42318; } .after h4 { color: #067647; }
+  .err { background: #fef3f2; border: 1px solid #fda29b; color: #912018; padding: 12px; border-radius: 6px;
+         font: 12px/1.5 monospace; white-space: pre-wrap; word-break: break-all; }
+  .ok svg { height: auto; display: block; margin: 0 auto; }
+</style></head>
+<body><div id="root"></div>
+<script type="module">
+import mermaid from '../../node_modules/mermaid/dist/mermaid.esm.min.mjs';
+import { cases } from '../cases.mjs';
+const qs = new URLSearchParams(location.search);
+const { safeRepairMermaid, createMermaidParser } = await import('../../src/' + (qs.get('fix') || 'fixMermaid.js'));
+const only = qs.get('ids') ? qs.get('ids').split(',') : null;
+
+const palette = new URLSearchParams(location.search).get('palette');
+mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: 'default',
+  fontFamily: '"Noto Sans CJK SC", sans-serif',
+  ...(palette ? { themeVariables: { xyChart: { plotColorPalette: '#3346B8, #E07A1F, #1F7A4D, #B42318' } } } : {}) });
+const parse = createMermaidParser(mermaid);
+const root = document.getElementById('root');
+let seq = 0;
+
+async function renderInto(el, code) {
+  const id = 'm' + (++seq);
+  try {
+    const { svg } = await mermaid.render(id, code);
+    el.className = 'ok'; el.innerHTML = svg;
+    return { ok: true };
+  } catch (e) {
+    document.getElementById('d' + id)?.remove();
+    document.getElementById(id)?.remove();
+    const msg = String(e?.message ?? e).split('\n').slice(0, 6).join('\n');
+    el.className = 'err'; el.textContent = '渲染失败\n' + msg;
+    return { ok: false, error: msg };
+  }
+}
+
+function countSvg(el, type) {
+  if (type === 'flowchart') return {
+    nodes: el.querySelectorAll('g.node').length,
+    edges: el.querySelectorAll('path.flowchart-link').length,
+  };
+  if (type === 'sequence') return { messages: el.querySelectorAll('.messageText').length };
+  if (type === 'pie') return { slices: el.querySelectorAll('path.pieCircle').length };
+  if (type === 'xychart') return {
+    bars: el.querySelectorAll('g[class^="bar-plot"] rect').length,
+    lines: el.querySelectorAll('g[class^="line-plot"]').length,
+  };
+  if (type === 'mindmap') return { nodes: el.querySelectorAll('g.mindmap-node').length };
+  return { nodes: el.querySelectorAll('g.node').length };
+}
+
+const results = [];
+for (const c of cases.filter((x) => !only || only.includes(x.id))) {
+  const wrap = document.createElement('div');
+  wrap.innerHTML = `
+    <div class="panel before" id="before-${c.id}"><h4>${c.id} 修复前</h4><div class="body"></div></div>
+    <div class="panel after" id="after-${c.id}"><h4>${c.id} 修复后</h4><div class="body"></div></div>`;
+  root.appendChild(wrap);
+
+  const b = await renderInto(wrap.querySelector('.before .body'), c.src);
+  const r = await safeRepairMermaid(c.src, parse);
+  const afterBody = wrap.querySelector('.after .body');
+  let a;
+  if (r.ok) a = await renderInto(afterBody, r.code);
+  else { // 降级：展示源码
+    afterBody.className = 'err';
+    afterBody.textContent = '规则修复失败，已降级为展示源码：\n\n' + r.code;
+    a = { ok: false, error: r.error, degraded: true };
+  }
+  wrap.querySelector('.before h4').textContent = `${c.id} 修复前 · ${b.ok ? '✓ 原文可渲染' : '✗ 渲染失败'}`;
+  const ah = wrap.querySelector('.after h4');
+  ah.textContent = `${c.id} 修复后 · ${a.ok ? (r.fixes.length ? '✓ 修复后渲染成功' : '✓ 原文未改动') : '⚠ 修复失败，降级展示源码'}`;
+  if (!a.ok) ah.style.color = '#b54708';
+  results.push({ id: c.id, before: b, after: a, fixedCode: r.code, fixes: r.fixes,
+                 counts: a.ok ? countSvg(afterBody, c.type) : null });
+}
+window.__results = results;
+window.__done = true;
+</script></body></html>

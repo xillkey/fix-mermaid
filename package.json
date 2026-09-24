@@ -1,0 +1,30 @@
+{
+  "name": "fix-mermaid",
+  "version": "0.1.0",
+  "description": "Repair Mermaid syntax errors produced by LLMs — zero dependencies, runs directly in the browser.",
+  "type": "module",
+  "main": "./src/fixMermaid.js",
+  "module": "./src/fixMermaid.js",
+  "exports": {
+    ".": "./src/fixMermaid.js",
+    "./render": "./src/mermaid-render.js"
+  },
+  "files": ["src", "README.md", "README_CN.md", "LICENSE"],
+  "sideEffects": false,
+  "scripts": {
+    "test": "node test/node.test.mjs",
+    "demo": "python3 -m http.server 8765"
+  },
+  "keywords": ["mermaid", "llm", "ai", "repair", "fix", "syntax", "markdown", "chatbot", "diagram"],
+  "license": "MIT",
+  "peerDependencies": {
+    "mermaid": ">=10"
+  },
+  "peerDependenciesMeta": {
+    "mermaid": { "optional": true }
+  },
+  "devDependencies": {
+    "jsdom": "^26.0.0",
+    "mermaid": "^11.12.0"
+  }
+}

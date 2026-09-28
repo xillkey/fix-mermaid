@@ -48,7 +48,7 @@ curl -O https://raw.githubusercontent.com/xillkey/fix-mermaid/main/src/fixMermai
 
 You also need `mermaid` itself for rendering and validation (`npm install mermaid`). It has been tested with Mermaid 11.
 
-### 2. Fix a string (30 seconds)
+### 2. Fix a string
 
 ```js
 import { fixMermaid } from 'fix-mermaid';

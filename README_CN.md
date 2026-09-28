@@ -36,7 +36,7 @@ LLM 大多数时候能写出正确的 Mermaid，但总有一部分图渲染失�
 npm install github:xillkey/fix-mermaid
 
 # 方式 B：直接把文件复制进项目（没有任何依赖）
-curl -O https://raw.githubusercontent.com/<your-github-name>/fix-mermaid/main/src/fixMermaid.js
+curl -O https://raw.githubusercontent.com/xillkey/fix-mermaid/main/src/fixMermaid.js
 ```
 
 ```html

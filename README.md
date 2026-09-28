@@ -1,4 +1,6 @@
-![fix-mermaid.js](docs/images/fmlogo.png)
+<p align="center">
+  <img src="docs/images/fmlogo.png" alt="fix-mermaid.js">
+</p>
 
 # fix-mermaid.js
 

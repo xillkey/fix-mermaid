@@ -6,6 +6,10 @@
 
 **一个直接修复 LLM 生成的 Mermaid 语法错误的js库。**
 
+<p align="center">
+  <a href="https://xillkey.github.io/fix-mermaid/examples/demo.html"><strong>在线示例</strong></a>
+</p>
+
 LLM 大多数时候能写出正确的 Mermaid，但总有一部分图渲染失败。常见原因有：全角标点、标签里有括号却没加引号、用 `end` 当节点 ID、漏写 `end`、饼图数值带 `%`、脑图写成了 Markdown 列表。`fix-mermaid` 是一个零依赖的 JavaScript 小模块，在渲染前把这些错误修好，让用户看到的是图，而不是 `Syntax error in text`。
 
 [English](./README.md)

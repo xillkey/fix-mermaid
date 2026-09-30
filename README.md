@@ -6,6 +6,10 @@
 
 **A JavaScript library that directly fixes Mermaid syntax errors produced by LLMs.**
 
+<p align="center">
+  <a href="https://xillkey.github.io/fix-mermaid/examples/demo.html"><strong>Live demo</strong></a>
+</p>
+
 LLMs write Mermaid well most of the time, but a noticeable fraction of diagrams fail to render. Typical causes are full-width punctuation, unquoted labels containing brackets, `end` used as a node id, a missing `end`, a `%` sign inside a pie chart, or a mind map written as a Markdown list. `fix-mermaid` is a small, dependency-free JavaScript module that repairs these errors before rendering, so your users see a diagram instead of `Syntax error in text`.
 
 [简体中文](./README_CN.md)
